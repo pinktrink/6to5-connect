@@ -1,7 +1,8 @@
-var path = require("path");
-var to5  = require("6to5-core");
-var fs   = require("fs");
-var _    = require("lodash");
+var path   = require("path");
+var to5    = require("6to5-core");
+var fs     = require("fs");
+var _      = require("lodash");
+var mkdirp = require("mkdirp");
 
 module.exports = function (opts) {
   opts = _.defaults(opts || {}, {
@@ -19,14 +20,34 @@ module.exports = function (opts) {
     var dest = path.join(opts.dest, url);
     var src  = path.join(opts.src, url);
 
-    var write = function (transformed) {
-      fs.writeFile(dest, transformed, function (err) {
-        if (err) {
-          next(err);
+    var mkDestDir = function(cb) {
+      var dir = path.dirname(dest);
+
+      fs.exists(dir, function(exists) {
+        if (!exists) {
+          mkdirp(dir, function(err) {
+            if (err) {
+              next(err);
+            } else {
+              cb();
+            }
+          });
         } else {
-          cache[url] = Date.now();
-          next();
+          cb();
         }
+      });
+    };
+
+    var write = function (transformed) {
+      mkDestDir(function() {
+        fs.writeFile(dest, transformed, function (err) {
+          if (err) {
+            next(err);
+          } else {
+            cache[url] = Date.now();
+            next();
+          }
+        });
       });
     };
 
